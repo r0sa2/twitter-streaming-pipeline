@@ -6,7 +6,7 @@ This repository is intended to document the implementation of an end-to-end Twit
 Sentiment analysis is performed using an LSTM model trained on the <a href="https://www.kaggle.com/datasets/kazanova/sentiment140">sentiment140 dataset</a>. The classification report of the trained model on the test dataset (10% of the total dataset) is depicted below.
 
 <p align="center">
-    <img src="/assets/classification_report.png" alt="Flowchart" height="60%" width="60%"/>
+    <img src="/assets/classification_report.png" alt="Classification Report" height="60%" width="60%"/>
 </p>
 
 ## Pipeline Architecture
