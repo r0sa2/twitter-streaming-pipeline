@@ -1,0 +1,80 @@
+version: "3"
+
+services:
+  zookeeper:
+    container_name: twitterstreamingpipeline_ig_zookeeper
+    image: wurstmeister/zookeeper
+    restart: on-failure
+    ports:
+      - "2181:2181"
+  kafka:
+    container_name: twitterstreamingpipeline_ig_kafka
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    restart: on-failure
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=INSIDE://kafka:9093,OUTSIDE://localhost:9092
+      - KAFKA_LISTENERS=INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INSIDE
+      - KAFKA_CREATE_TOPICS=tweets:1:1,tweets_with_sentiment:1:1
+  tweets_producer:
+    container_name: twitterstreamingpipeline_ig_tweets_producer
+    build: ./tweets_producer
+    depends_on:
+      - kafka
+    restart: on-failure
+    environment:
+      - TWITTER_API_KEY=
+      - TWITTER_API_KEY_SECRET=
+      - TWITTER_ACCESS_TOKEN=
+      - TWITTER_ACCESS_TOKEN_SECRET=
+      - TWITTER_KEYWORD=
+      - KAFKA_TWEETS_TOPIC=tweets
+  sentiment_analyser:
+    container_name: twitterstreamingpipeline_ig_sentiment_analyser
+    build: ./sentiment_analyser
+    depends_on:
+      - kafka
+    restart: on-failure
+    environment:
+      - KAFKA_TWEETS_TOPIC=tweets
+      - KAFKA_TWEETS_WITH_SENTIMENT_TOPIC=tweets_with_sentiment
+  influxdb_connector:
+    container_name: twitterstreamingpipeline_ig_influxdb_connector
+    build: ./influxdb_connector
+    depends_on:
+      - kafka
+      - influxdb
+    restart: on-failure
+    environment:
+      - KAFKA_TWEETS_WITH_SENTIMENT_TOPIC=tweets_with_sentiment
+      - INFLUXDB_ORG=my-org
+      - INFLUXDB_TOKEN=
+      - INFLUXDB_BUCKET=my-bucket
+      - INFLUXDB_MEASUREMENT=tweets_with_sentiment
+  influxdb:
+    container_name: twitterstreamingpipeline_ig_influxdb
+    image: influxdb
+    restart: on-failure
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./persistence/influxdb2:/var/lib/influxdb2
+  grafana:
+    container_name: twitterstreamingpipeline_ig_grafana
+    image: grafana/grafana-oss
+    depends_on:
+      - influxdb
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./persistence/grafana:/var/lib/grafana

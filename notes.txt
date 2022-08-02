@@ -1,0 +1,42 @@
+INFLUXDB SETUP
+1. Navigate to http://localhost:8086/
+2. Setup initial user. For example,
+    - Username: my-user
+    - Password: my-password
+    - Initial organization name: my-org
+    - Initial bucket name: my-bucket
+3.Copy token from "API TOKENS >> <Username>'s Token" to the enviroment variables for influxdb_connector in the compose file (Will need to rerun influxdb_connector).
+
+GRAFANA SETUP
+1. Navigate to http://localhost:3000/
+2. Enter username/password as per docker-compose.yml (username: admin, password: admin in this case)
+3. Get IP address (execute "ipconfig getifaddr en0" in terminal)
+3. Navigate to "Add your first data source >> InfluxDB". Enter the following :-
+    - Query language: Flux
+    - HTTP URL: http://<IP address>:8086
+    - Unselect Auth >> Basic auth
+    - Enter organization/token/default bucket details as per the details entered for Influxdb setup
+   Click on "Save & test"
+4. Create a new dashboard (simple flux commands below)
+
+Simple flux commands :-
+from(bucket: "my-bucket")
+    |> range(start: -10m, stop: now())
+    |> filter(fn: (r) => r._measurement == "tweets_with_sentiment" and r._field == "text")
+    |> count()
+
+from(bucket: "my-bucket")
+    |> range(start: -10m, stop: now())
+    |> filter(fn: (r) => r._measurement == "tweets_with_sentiment" and r._field == "text")
+    |> sort(columns: ["_time"], desc: true)
+    |> limit(n:5)
+
+from(bucket: "my-bucket")
+    |> range(start: -10m, stop: now())
+    |> filter(fn: (r) => r._measurement == "tweets_with_sentiment")
+    |> aggregateWindow(every: 5s, fn: count)
+
+from(bucket: "my-bucket")
+    |> range(start: -10m, stop: now())
+    |> filter(fn: (r) => r._measurement == "tweets_with_sentiment" and r._field == "sentiment_label")
+    |> aggregateWindow(every: 5s, fn: mean)
